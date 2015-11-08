@@ -1,3 +1,5 @@
+var moment = require('cloud/moment');
+
 var tmdbKey = '0d1d0cc3c4aec9ca1c2c8c9e781a7ef1';
 
 Parse.Cloud.define('getSeriesEpisodes', function(request, reply) {
@@ -20,11 +22,26 @@ Parse.Cloud.define('getSeriesEpisodes', function(request, reply) {
 
     Parse.Promise.when(queries).then(function() {
       var args = Array.prototype.slice.call(arguments);
-      seasons = [];
+      episodes = [];
       args.forEach(function(season) {
-        seasons.push(season.data);
+        season.data.episodes.forEach(function(episode) {
+          episodes.push(episode);
+        }.bind(this));
       }.bind(this));
-      reply.success(seasons);
+      reply.success(episodes);
     }.bind(this));
+  });
+});
+
+Parse.Cloud.define('getNextEpisode', function(request, reply) {
+  Parse.Cloud.run('getSeriesEpisodes', {seriesId: request.params.seriesId}).then(function(episodes) {
+    var result = null;
+    episodes.forEach(function(episode) {
+      var air_date = moment(episode.air_date);
+      if (!result && air_date.isAfter(moment())) {
+        result = episode;
+      }
+    }.bind(this));
+    return reply.success(result);
   });
 });
