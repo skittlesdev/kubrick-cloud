@@ -38,10 +38,36 @@ Parse.Cloud.define('getNextEpisode', function(request, reply) {
     var result = null;
     episodes.forEach(function(episode) {
       var air_date = moment(episode.air_date);
-      if (!result && air_date.isAfter(moment())) {
+      if (!result && episode && air_date.isAfter(moment())) {
         result = episode;
       }
     }.bind(this));
+    if (result) {
+      result.seriesId = request.params.seriesId;
+    }
+    else {
+      result = {seriesId: request.params.seriesId}
+    }
     return reply.success(result);
+  });
+});
+
+Parse.Cloud.define('userNextEpisodes', function(request, reply) {
+  var query = new Parse.Query('Favorite');
+  query.equalTo('user', request.user);
+  query.exists('tmdb_series_id');
+  query.find({
+    success: function(favorites) {
+      var queries = [];
+
+      favorites.forEach(function(favorite) {
+        queries.push(Parse.Cloud.run('getNextEpisode', {seriesId: favorite.get('tmdb_series_id')}));
+      }.bind(this));
+
+      Parse.Promise.when(queries).then(function() {
+        var args = Array.prototype.slice.call(arguments);
+        reply.success(args);
+      });
+    }
   });
 });
