@@ -80,6 +80,20 @@ Parse.Cloud.define('userNextEpisodes', function(request, reply) {
   });
 });
 
+Parse.Cloud.define('similarSeries', function(request, reply) {
+  var seriesId = request.params.seriesId;
+  Parse.Cloud.httpRequest({
+    url: 'https://api.themoviedb.org/3/tv/' + seriesId + '/similar',
+    params: {
+      api_key: tmdbKey
+    }
+  }).then(function(apiResponse) {
+    reply.success(apiResponse.data);
+  }).fail(function() {
+    reply.error();
+  })
+});
+
 Parse.Cloud.job("pushUserNext", function(request, status) {
   var query = new Parse.Query(Parse.User);
   query.each(function(user) {
