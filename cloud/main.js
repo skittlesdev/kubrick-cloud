@@ -53,7 +53,17 @@ Parse.Cloud.define('getSeriesSeasons', function(request, reply) {
 
     Parse.Promise.when(queries).then(function() {
       var args = Array.prototype.slice.call(arguments);
-      reply.success(args);
+      var seasons = [];
+      var index = 1;
+      args.forEach(function(response) {
+        var season = response.data;
+        if (!season.name) {
+          season.name = 'Season ' + index;
+        }
+        index++;
+        seasons.push(season);
+      }.bind(this));
+      reply.success(seasons);
     }.bind(this));
   });
 });
@@ -117,6 +127,36 @@ Parse.Cloud.define('similarSeries', function(request, reply) {
   }).fail(function() {
     reply.error();
   })
+});
+
+Parse.Cloud.define('getVideos', function(request, reply) {
+  var mediaId = request.params.mediaId;
+  var videoType = request.params.videoType;
+
+  if (videoType == "tv") {
+    Parse.Cloud.httpRequest({
+      url: 'https://api.themoviedb.org/3/tv/' + mediaId + '/videos',
+      params: {
+        api_key: tmdbKey
+      }
+    }).then(function(apiResponse) {
+      reply.success(apiResponse.data);
+    }).fail(function() {
+      reply.error();
+    });
+  }
+  else {
+    Parse.Cloud.httpRequest({
+      url: 'https://api.themoviedb.org/3/movie/' + mediaId + '/videos',
+      params: {
+        api_key: tmdbKey
+      }
+    }).then(function(apiResponse) {
+      reply.success(apiResponse.data);
+    }).fail(function() {
+      reply.error();
+    });
+  }
 });
 
 Parse.Cloud.job("pushUserNext", function(request, status) {
