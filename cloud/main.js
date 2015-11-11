@@ -159,6 +159,44 @@ Parse.Cloud.define('getVideos', function(request, reply) {
   }
 });
 
+Parse.Cloud.define('viewedSeriesSeason', function(request, reply) {
+  var seriesId = request.params.seriesId;
+  var seasonNumber = request.params.seasonNumber;
+  Parse.Cloud.httpRequest({
+    url: 'https://api.themoviedb.org/3/tv/' + seriesId + '/season/' + seasonNumber,
+    params: {
+      api_key: tmdbKey
+    }
+  }).then(function(apiResponse) {
+    batch = [];
+    apiResponse.data.episodes.forEach(function(episode) {
+      var viewed = new Parse.Object('ViewedTvSeriesEpisodes', {
+        User: request.user,
+        SerieId: parseInt(seriesId),
+        SeasonNumber: parseInt(seasonNumber),
+        EpisodeNumber: parseInt(episode.episode_number),
+        EpisodeId: parseInt(episode.id),
+        AirDate: episode.air_date
+      });
+      var acl = new Parse.ACL();
+      acl.setPublicReadAccess(true);
+      acl.setPublicWriteAccess(false);
+      acl.setWriteAccess(request.user, true);
+      viewed.setACL(acl);
+      batch.push(viewed);
+    }.bind(this));
+    console.log(batch);
+    Parse.Object.saveAll(batch).then(function() {
+      reply.success();
+    }).fail(function(error) {
+      console.log(error);
+      reply.error();
+    })
+  }.bind(this)).fail(function() {
+    reply.error();
+  });
+});
+
 Parse.Cloud.job("pushUserNext", function(request, status) {
   var query = new Parse.Query(Parse.User);
   query.each(function(user) {
