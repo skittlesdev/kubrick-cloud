@@ -33,6 +33,31 @@ Parse.Cloud.define('getSeriesEpisodes', function(request, reply) {
   });
 });
 
+Parse.Cloud.define('getSeriesSeasons', function(request, reply) {
+  var seriesId = request.params.seriesId;
+  Parse.Cloud.httpRequest({
+    url: 'https://api.themoviedb.org/3/tv/' + seriesId,
+    params: {
+      api_key: tmdbKey
+    }
+  }).then(function(seriesResponse) {
+    var queries = [];
+    seriesResponse.data.seasons.forEach(function(season) {
+      queries.push(Parse.Cloud.httpRequest({
+        url: 'https://api.themoviedb.org/3/tv/' + seriesId + '/season/' + season.season_number,
+        params: {
+          api_key: tmdbKey
+        }
+      }));
+    }.bind(this));
+
+    Parse.Promise.when(queries).then(function() {
+      var args = Array.prototype.slice.call(arguments);
+      reply.success(args);
+    }.bind(this));
+  });
+});
+
 Parse.Cloud.define('getNextEpisode', function(request, reply) {
   Parse.Cloud.run('getSeriesEpisodes', {seriesId: request.params.seriesId}).then(function(episodes) {
     var result = null;
