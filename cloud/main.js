@@ -232,6 +232,9 @@ Parse.Cloud.define('getTimeline', function(request, response) {
   var followingsQuery = new Parse.Query('Follow');
   followingsQuery.equalTo('user', request.user);
   followingsQuery.find().then(function(followings) {
+    if (followings.length == 0) {
+      return response.error('User is not following anyone');
+    }
     getFollowingsFavorites(followings).then(function(favorites) {
       response.success(parseFollowingFavorites(favorites));
     }.bind(this));
@@ -273,6 +276,36 @@ Parse.Cloud.afterSave('Follow', function(request) {
       uri: 'kubrick://profile/' + request.user.id
     }
   });
+});
+
+Parse.Cloud.afterSave('Favorite', function(request) {
+  var followersQuery = new Parse.Query('Follow');
+  console.log(request.object);
+  if (request.object.has('tmdb_series_id')) {
+    var data = {
+      title: request.user.getUsername() + ' favorited ' + request.object.get('title') + ' tv show',
+      alert: 'Tap to discover this TV show',
+      uri: 'kubrick://media/tv/' + request.object.get('tmdb_series_id')
+    }
+  }
+  else {
+    var data = {
+      title: request.user.getUsername() + ' favorited ' + request.object.get('title') + ' movie',
+      alert: 'Tap to discover this movie',
+      uri: 'kubrick://media/movie/' + request.object.get('tmdb_movie_id')
+    }
+  }
+  followersQuery.equalTo('other_user', request.user);
+  followersQuery.find().then(function(followers) {
+    followers.forEach(function(follower) {
+      var pushQuery = new Parse.Query(Parse.Installation);
+      pushQuery.equalTo('user', follower.get('user'));
+      Parse.Push.send({
+        where: pushQuery,
+        data: data
+      });
+    }.bind(this));
+  }.bind(this));
 });
 
 Parse.Cloud.beforeSave('ViewedTvSeriesEpisodes', function(request, response) {
