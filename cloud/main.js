@@ -260,7 +260,8 @@ Parse.Cloud.define('seasonProgress', function(request, response) {
 Parse.Cloud.define('seriesProgress', function(request, response) {
   Parse.Cloud.run('getSeriesEpisodes', {seriesId: request.params.seriesId}).then(function(episodes) {
     var watchedQuery = new Parse.Query('ViewedTvSeriesEpisodes');
-    watchedQuery.equalTo('User', request.user);
+    var user = Parse.User.createWithoutData(request.params.userId);
+    watchedQuery.equalTo('User', user);
     watchedQuery.count().then(function(watchedCount) {
       var progress = (watchedCount * 100) / episodes.length;
       return response.success(parseInt(progress));
