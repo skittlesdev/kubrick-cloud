@@ -241,6 +241,33 @@ Parse.Cloud.define('getTimeline', function(request, response) {
   }.bind(this));
 });
 
+Parse.Cloud.define('seasonProgress', function(request, response) {
+  Parse.Cloud.run('getSeriesEpisodes', {seriesId: request.params.seriesId}).then(function(results) {
+    var episodes = results.filter(function(result) {
+      return result.season_number == request.params.seasonNumber;
+    }.bind(this));
+
+    var watchedQuery = new Parse.Query('ViewedTvSeriesEpisodes');
+    watchedQuery.equalTo('User', request.user);
+    watchedQuery.equalTo('SeasonNumber', request.params.seasonNumber);
+    watchedQuery.count().then(function(watchedCount) {
+      var progress = (watchedCount * 100) / episodes.length;
+      return response.success(parseInt(progress));
+    });
+  }.bind(this));
+});
+
+Parse.Cloud.define('seriesProgress', function(request, response) {
+  Parse.Cloud.run('getSeriesEpisodes', {seriesId: request.params.seriesId}).then(function(episodes) {
+    var watchedQuery = new Parse.Query('ViewedTvSeriesEpisodes');
+    watchedQuery.equalTo('User', request.user);
+    watchedQuery.count().then(function(watchedCount) {
+      var progress = (watchedCount * 100) / episodes.length;
+      return response.success(parseInt(progress));
+    });
+  }.bind(this));
+});
+
 Parse.Cloud.job("pushUserNext", function(request, status) {
   var query = new Parse.Query(Parse.User);
   query.each(function(user) {
