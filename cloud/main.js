@@ -233,3 +233,19 @@ Parse.Cloud.afterSave('Follow', function(request) {
     }
   });
 });
+
+Parse.Cloud.beforeSave('ViewedTvSeriesEpisodes', function(request, response) {
+  var query = new Parse.Query('ViewedTvSeriesEpisodes');
+  query.equalTo('User', request.user);
+  query.equalTo('EpisodeId', request.object.get('EpisodeId'));
+  query.count().then(function(count) {
+    if (count > 0) {
+      response.error('Episode already marked as watch for this user');
+    }
+    else {
+      response.success();
+    }
+  }).fail(function(err) {
+    console.log(err);
+  });
+});
