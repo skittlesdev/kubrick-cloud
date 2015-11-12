@@ -197,6 +197,47 @@ Parse.Cloud.define('viewedSeriesSeason', function(request, reply) {
   });
 });
 
+function getFollowingsFavorites(followings) {
+    var result = [];
+    var queries = [];
+    followings.forEach(function(following) {
+      var subquery = new Parse.Query('Favorite');
+      subquery.equalTo('user', following.get('other_user'));
+      queries.push(subquery);
+    }.bind(this));
+    var query = Parse.Query.or.apply(Parse.Query, queries);
+    query.include('user');
+    query.addDescending('updatedAt');
+    return query.find();
+}
+
+function parseFollowingFavorites(favorites) {
+  var result = [];
+  favorites.forEach(function(favorite) {
+    var date = new Date(favorite.get('updatedAt')).toISOString();
+    var image = favorite.get('poster_path');
+    var message = favorite.get('user').getUsername() + ' favorited ' + favorite.get('title');
+    if (favorite.has('tmdb_movie_id')) {
+      var uri = 'kubrick://media/movie/' + favorite.get('tmdb_movie_id');
+    }
+    else {
+      var uri = 'kubrick://media/tv/' + favorite.get('tmdb_series_id');
+    }
+    result.push({date: date, image: image, message: message, uri: uri});
+  }.bind(this));
+  return result;
+}
+
+Parse.Cloud.define('getTimeline', function(request, response) {
+  var followingsQuery = new Parse.Query('Follow');
+  followingsQuery.equalTo('user', request.user);
+  followingsQuery.find().then(function(followings) {
+    getFollowingsFavorites(followings).then(function(favorites) {
+      response.success(parseFollowingFavorites(favorites));
+    }.bind(this));
+  }.bind(this));
+});
+
 Parse.Cloud.job("pushUserNext", function(request, status) {
   var query = new Parse.Query(Parse.User);
   query.each(function(user) {
